@@ -1,0 +1,20 @@
+[package]
+name = "hodstack"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "hodstack"
+path = "src/lib.rs"
+
+[[bin]]
+name = "hod"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4.6", features = ["derive"] }
+sha2 = "0.10"
+
+[dev-dependencies]
+tempfile = "3"
