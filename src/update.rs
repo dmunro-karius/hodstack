@@ -7,7 +7,8 @@ use std::time::Duration;
 
 use anstyle::Style;
 use anyhow::{anyhow, bail, Context as _, Result};
-use sha2::{Digest as _, Sha256};
+
+use crate::lock;
 
 const BOLD: Style = Style::new().bold();
 const DIM: Style = Style::new().dimmed();
@@ -238,7 +239,7 @@ fn wanted_sum<'a>(checksums: &'a str, file: &str) -> Result<&'a str> {
 
 fn sum(path: &Path) -> Result<String> {
     let bytes = fs::read(path).with_context(|| format!("cannot read `{}`", path.display()))?;
-    Ok(format!("{:x}", Sha256::digest(&bytes)))
+    Ok(lock::sum_of(&bytes))
 }
 
 fn extract(archive: &Path, work: &Path) -> Result<()> {

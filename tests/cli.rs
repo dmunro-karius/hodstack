@@ -1,6 +1,7 @@
 #![expect(clippy::expect_used, reason = "a test stops on a fault of its own")]
 #![expect(clippy::panic, reason = "a test stops on a fault of its own")]
 
+use std::fmt::Write as _;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -184,10 +185,12 @@ fn release(dir: &Path, body: &str, sound: bool) -> String {
         .expect("tar runs");
     assert!(status.success());
 
-    let sum = format!(
-        "{:x}",
-        Sha256::digest(fs::read(dir.join(&file)).expect("the archive"))
-    );
+    let sum = Sha256::digest(fs::read(dir.join(&file)).expect("the archive"))
+        .iter()
+        .fold(String::with_capacity(64), |mut hex, byte| {
+            let _ = write!(hex, "{byte:02x}");
+            hex
+        });
     let sum = if sound { sum } else { "0".repeat(64) };
 
     fs::write(dir.join("checksums.txt"), format!("{sum}  {file}\n")).expect("checksums.txt");
