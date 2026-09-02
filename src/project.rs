@@ -40,6 +40,10 @@ impl Project {
         self.path(".hod/lock")
     }
 
+    pub fn exists(&self) -> bool {
+        self.path(".hod").is_dir()
+    }
+
     pub fn rules(&self) -> Result<Vec<Rule>> {
         let dir = self.path(".hod/rules");
         let Ok(entries) = fs::read_dir(&dir) else {
@@ -79,6 +83,10 @@ impl Project {
 
     pub fn installed_skills(&self) -> Result<Vec<Skill>> {
         skills::installed(&self.path(".hod/skills"))
+    }
+
+    pub fn skills(&self) -> Result<Vec<Skill>> {
+        skills::local(&self.path(".hod/skills"))
     }
 }
 

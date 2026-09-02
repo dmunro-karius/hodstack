@@ -20,6 +20,11 @@ Writes `AGENTS.md`, `CLAUDE.md`, and installs every skill into
 `.claude/skills/`, so Claude Code can find and run them as slash commands.
 Safe to rerun — it's how you fold in new rules and skills too.
 
+Refuses to write anything if `AGENTS.md` or `CLAUDE.md` already exists.
+Move its text into `.hod/PROJECT.md` and run `hod init` again. On success,
+it opens your coding agent into the `init` skill, which asks about this
+project and fills in `.hod/PROJECT.md` for you.
+
 ```
 AGENTS.md                        hod writes this
 CLAUDE.md                        hod writes this (imports AGENTS.md for Claude Code)

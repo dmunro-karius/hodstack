@@ -9,6 +9,13 @@ use crate::project::{self, Project};
 
 const IGNORED: &str = "/.claude/skills/";
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Mode {
+    Check,
+    Write,
+    Force,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 enum Outcome {
     Kept,
@@ -25,7 +32,7 @@ struct Unit {
 
 /// Writes `AGENTS.md`, `CLAUDE.md`, and every installed skill into `.claude/skills/`,
 /// gating each write on `.hod/lock` ownership. Returns `true` if nothing was skipped.
-pub fn sync(project: &Project, force: bool, out: &mut impl Write) -> Result<bool> {
+pub fn sync(project: &Project, mode: Mode, out: &mut impl Write) -> Result<bool> {
     let rules = project.rules()?;
     let skills = project.installed_skills()?;
     let units = plan(&rules, &skills);
@@ -34,29 +41,38 @@ pub fn sync(project: &Project, force: bool, out: &mut impl Write) -> Result<bool
     let mut next = Lock::default();
     let mut clean = true;
 
+    if mode == Mode::Check {
+        writeln!(out, "  this run writes nothing")?;
+    }
+
     for unit in &units {
-        let outcome = keep(project, &lock, &mut next, unit, force)?;
+        let outcome = keep(project, &lock, &mut next, unit, mode)?;
 
         report(out, outcome, &unit.label)?;
 
         if outcome == Outcome::Skipped {
             writeln!(
                 out,
-                "           this file is yours; rerun `hod init --force` to write over it"
+                "           this file is yours; rerun `hod update --force` to write over it"
             )?;
-            clean = false;
+
+            if mode != Mode::Check {
+                clean = false;
+            }
         }
     }
 
-    for label in gone(project, &lock, &next, &units)? {
+    for label in gone(project, &lock, &next, &units, mode)? {
         report(out, Outcome::Removed, &label)?;
     }
 
-    if let Some(outcome) = ignore(project)? {
+    if let Some(outcome) = ignore(project, mode)? {
         report(out, outcome, ".gitignore")?;
     }
 
-    next.write(&project.lock_path())?;
+    if mode != Mode::Check {
+        next.write(&project.lock_path())?;
+    }
 
     Ok(clean)
 }
@@ -92,7 +108,13 @@ fn plan(rules: &[project::Rule], skills: &[crate::skills::Skill]) -> Vec<Unit> {
     units
 }
 
-fn keep(project: &Project, lock: &Lock, next: &mut Lock, unit: &Unit, force: bool) -> Result<Outcome> {
+fn keep(
+    project: &Project,
+    lock: &Lock,
+    next: &mut Lock,
+    unit: &Unit,
+    mode: Mode,
+) -> Result<Outcome> {
     let mut outcome = Outcome::Kept;
 
     for (file, text) in &unit.files {
@@ -100,7 +122,7 @@ fn keep(project: &Project, lock: &Lock, next: &mut Lock, unit: &Unit, force: boo
         let found = fs::read(&path).ok();
         let state = lock.state(file, found.as_deref());
 
-        if state == Owner::Theirs && !force {
+        if state == Owner::Theirs && mode != Mode::Force {
             outcome = outcome.max(Outcome::Skipped);
             continue;
         }
@@ -117,13 +139,21 @@ fn keep(project: &Project, lock: &Lock, next: &mut Lock, unit: &Unit, force: boo
             Outcome::Updated
         });
 
-        write(&path, text)?;
+        if mode != Mode::Check {
+            write(&path, text)?;
+        }
     }
 
     Ok(outcome)
 }
 
-fn gone(project: &Project, lock: &Lock, next: &Lock, units: &[Unit]) -> Result<Vec<String>> {
+fn gone(
+    project: &Project,
+    lock: &Lock,
+    next: &Lock,
+    units: &[Unit],
+    mode: Mode,
+) -> Result<Vec<String>> {
     let mut labels = Vec::new();
 
     for file in lock.files() {
@@ -138,7 +168,10 @@ fn gone(project: &Project, lock: &Lock, next: &Lock, units: &[Unit]) -> Result<V
             continue;
         }
 
-        fs::remove_file(&path).with_context(|| format!("cannot remove `{}`", path.display()))?;
+        if mode != Mode::Check {
+            fs::remove_file(&path)
+                .with_context(|| format!("cannot remove `{}`", path.display()))?;
+        }
 
         let label = label(file);
 
@@ -151,8 +184,10 @@ fn gone(project: &Project, lock: &Lock, next: &Lock, units: &[Unit]) -> Result<V
         }
     }
 
-    for label in &labels {
-        prune(&project.path(label));
+    if mode != Mode::Check {
+        for label in &labels {
+            prune(&project.path(label));
+        }
     }
 
     Ok(labels)
@@ -184,7 +219,7 @@ fn prune(dir: &Path) {
     let _ = fs::remove_dir(dir);
 }
 
-fn ignore(project: &Project) -> Result<Option<Outcome>> {
+fn ignore(project: &Project, mode: Mode) -> Result<Option<Outcome>> {
     if !project.path(".git").exists() {
         return Ok(None);
     }
@@ -196,20 +231,22 @@ fn ignore(project: &Project) -> Result<Option<Outcome>> {
         return Ok(None);
     }
 
-    let mut text = found.clone();
+    if mode != Mode::Check {
+        let mut text = found.clone();
 
-    if !text.is_empty() && !text.ends_with('\n') {
+        if !text.is_empty() && !text.ends_with('\n') {
+            text.push('\n');
+        }
+
+        if !text.is_empty() {
+            text.push('\n');
+        }
+
+        text.push_str(IGNORED);
         text.push('\n');
+
+        write(&path, &text)?;
     }
-
-    if !text.is_empty() {
-        text.push('\n');
-    }
-
-    text.push_str(IGNORED);
-    text.push('\n');
-
-    write(&path, &text)?;
 
     Ok(Some(if found.is_empty() {
         Outcome::Created

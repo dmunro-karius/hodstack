@@ -3,7 +3,12 @@ use std::path::Path;
 
 use anyhow::{Context as _, Result};
 
+use crate::front::Front;
+
 const DEPS_UPGRADE: &str = include_str!("../skills/deps-upgrade/SKILL.md");
+const INIT_SKILL: &str = include_str!("../skills/init/SKILL.md");
+
+pub const INIT: &str = "init";
 
 #[derive(Debug, Clone)]
 pub struct Skill {
@@ -11,11 +16,29 @@ pub struct Skill {
     pub files: Vec<(String, String)>,
 }
 
+impl Skill {
+    pub fn front(&self) -> Front {
+        let text = self
+            .files
+            .iter()
+            .find(|(file, _)| file == "SKILL.md")
+            .map_or("", |(_, text)| text.as_str());
+
+        Front::read(text, &self.name)
+    }
+}
+
 pub fn shipped() -> Vec<Skill> {
-    vec![Skill {
-        name: "deps-upgrade".to_owned(),
-        files: vec![("SKILL.md".to_owned(), DEPS_UPGRADE.to_owned())],
-    }]
+    vec![
+        Skill {
+            name: INIT.to_owned(),
+            files: vec![("SKILL.md".to_owned(), INIT_SKILL.to_owned())],
+        },
+        Skill {
+            name: "deps-upgrade".to_owned(),
+            files: vec![("SKILL.md".to_owned(), DEPS_UPGRADE.to_owned())],
+        },
+    ]
 }
 
 pub fn local(dir: &Path) -> Result<Vec<Skill>> {
@@ -96,22 +119,18 @@ fn relative(skill: &Path, file: &Path) -> String {
 }
 
 fn file_name(path: &Path) -> String {
-    path.file_name().unwrap_or_default().to_string_lossy().into_owned()
+    path.file_name()
+        .unwrap_or_default()
+        .to_string_lossy()
+        .into_owned()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::front::Front;
 
     fn front_of(skill: &Skill) -> Front {
-        let text = skill
-            .files
-            .iter()
-            .find(|(file, _)| file == "SKILL.md")
-            .map_or("", |(_, text)| text.as_str());
-
-        Front::read(text, &skill.name)
+        skill.front()
     }
 
     #[test]

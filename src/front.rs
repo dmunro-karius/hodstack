@@ -23,8 +23,8 @@ impl Front {
             };
 
             match key {
-                "name" => front.name = value.to_owned(),
-                "description" => front.description = value.to_owned(),
+                "name" => value.clone_into(&mut front.name),
+                "description" => value.clone_into(&mut front.description),
                 "disable-model-invocation" => front.user = value == "true",
                 _ => {}
             }

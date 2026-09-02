@@ -3,13 +3,13 @@ use clap::{Parser, Subcommand};
 #[derive(Debug, Parser)]
 #[command(
     name = "hod",
-    version,
     about = "Hodstack makes coding agents more productive.",
     long_about = None,
     override_usage = "hod <skill>\n  hod <command> [options]",
     args_conflicts_with_subcommands = true,
     disable_help_subcommand = true,
-    term_width = 0
+    term_width = 0,
+    styles = crate::help::STYLES
 )]
 pub struct Cli {
     #[command(subcommand)]
@@ -23,7 +23,35 @@ pub struct Cli {
 pub enum Command {
     #[command(about = "Write the files of this project, then start the skill init")]
     Init {
-        #[arg(long, help = "Write over a project file that this program does not own")]
+        #[arg(
+            long,
+            help = "Write over a project file that this program does not own"
+        )]
         force: bool,
+    },
+
+    #[command(about = "List the installed skills")]
+    List,
+
+    #[command(about = "Install the newest build of hod and write the project files")]
+    Update {
+        #[arg(long, help = "Report each change without a write of it")]
+        check: bool,
+
+        #[arg(long, help = "Write the project files without an installation of hod")]
+        project: bool,
+
+        #[arg(
+            long,
+            conflicts_with = "check",
+            help = "Write over a project file that this program does not own"
+        )]
+        force: bool,
+    },
+
+    #[command(about = "Print a shell completion script")]
+    Completions {
+        #[arg(help = "The shell that receives the script")]
+        shell: clap_complete::Shell,
     },
 }
