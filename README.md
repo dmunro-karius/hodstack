@@ -2,7 +2,21 @@
 
 Hodstack makes coding agents more productive.
 
-## Install
+## Installation
+
+On macOS and Linux:
+
+```sh
+curl -fsSL https://github.com/dmunro-karius/hodstack/releases/latest/download/install.sh | sh
+```
+
+On Windows:
+
+```powershell
+irm https://github.com/dmunro-karius/hodstack/releases/latest/download/install.ps1 | iex
+```
+
+From source:
 
 ```sh
 cargo install --path .

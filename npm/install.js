@@ -4,7 +4,7 @@ const { chmodSync, copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync }
 const { tmpdir } = require('node:os')
 const { join } = require('node:path')
 
-const REPOSITORY = 'hodstack/hodstack'
+const REPOSITORY = 'dmunro-karius/hodstack'
 const TAG = process.env.HOD_TAG
 const RELEASE = TAG
   ? `https://github.com/${REPOSITORY}/releases/download/${TAG}`

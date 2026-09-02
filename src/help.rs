@@ -38,7 +38,7 @@ pub fn template() -> String {
          {BOLD}OPTIONS{BOLD:#}\n\
          {{options}}\n\
          \n\
-         {DIM}github.com/hodstack/hodstack{DIM:#}{}",
+         {DIM}github.com/dmunro-karius/hodstack{DIM:#}{}",
         binary()
     )
 }

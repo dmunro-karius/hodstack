@@ -1,7 +1,7 @@
 #Requires -Version 5.1
 $ErrorActionPreference = 'Stop'
 
-$repo = 'hodstack/hodstack'
+$repo = 'dmunro-karius/hodstack'
 $dir = if ($env:HOD_INSTALL_DIR) { $env:HOD_INSTALL_DIR } else { Join-Path $env:LOCALAPPDATA 'hod\bin' }
 $url = if ($env:HOD_TAG) {
     "https://github.com/$repo/releases/download/$env:HOD_TAG"

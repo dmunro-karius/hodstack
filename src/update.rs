@@ -12,7 +12,7 @@ use crate::lock;
 
 const BOLD: Style = Style::new().bold();
 const DIM: Style = Style::new().dimmed();
-const RELEASE: &str = "https://github.com/hodstack/hodstack/releases/latest/download";
+const RELEASE: &str = "https://github.com/dmunro-karius/hodstack/releases/latest/download";
 const DAY: Duration = Duration::from_secs(60 * 60 * 24);
 
 #[derive(Debug, PartialEq, Eq)]

@@ -15,5 +15,5 @@ OPTIONS
   -h, --help     Print help
   -V, --version  Print version
 
-github.com/hodstack/hodstack
+github.com/dmunro-karius/hodstack
 [..]

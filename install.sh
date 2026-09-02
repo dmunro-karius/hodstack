@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-REPO="hodstack/hodstack"
+REPO="dmunro-karius/hodstack"
 TAG="${HOD_TAG:-}"
 DIR="${HOD_INSTALL_DIR:-$HOME/.local/bin}"
 
