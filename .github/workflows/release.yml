@@ -84,6 +84,9 @@ jobs:
           path: dist
           merge-multiple: true
 
+      - name: Add the installers
+        run: cp install.sh install.ps1 dist/
+
       - name: Write version.txt
         run: |
           set -eu
