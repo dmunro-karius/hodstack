@@ -1,0 +1,119 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            runner: macos-latest
+          - target: x86_64-apple-darwin
+            runner: macos-latest
+          - target: x86_64-unknown-linux-musl
+            runner: ubuntu-latest
+          - target: aarch64-unknown-linux-musl
+            runner: ubuntu-24.04-arm
+          - target: x86_64-pc-windows-msvc
+            runner: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        with:
+          toolchain: stable
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          key: ${{ matrix.target }}
+
+      - name: Install the musl toolchain
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install --yes musl-tools
+
+      - name: Build
+        run: cargo build --locked --release --target ${{ matrix.target }}
+        env:
+          HOD_COMMIT: ${{ github.sha }}
+
+      - name: Pack
+        shell: bash
+        run: |
+          set -eu
+          name=hod
+          if [ "${{ runner.os }}" = "Windows" ]; then name=hod.exe; fi
+          staging="$(mktemp -d)"
+          cp "target/${{ matrix.target }}/release/$name" "$staging/$name"
+          cp LICENSE "$staging/LICENSE"
+          mkdir -p dist
+          tar -czf "dist/hod-${{ matrix.target }}.tar.gz" -C "$staging" "$name" LICENSE
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: hod-${{ matrix.target }}
+          path: dist/hod-${{ matrix.target }}.tar.gz
+          retention-days: 1
+
+  publish:
+    name: Publish release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Write version.txt
+        run: |
+          set -eu
+          crate="$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -n 1)"
+          stamp="$(date -u +%Y%m%d-%H%M%S)"
+          echo "tag=edge-$stamp" >> "$GITHUB_ENV"
+          printf '%s %s\n' "$crate" "$GITHUB_SHA" > dist/version.txt
+
+      - name: Write the checksums
+        working-directory: dist
+        run: sha256sum hod-*.tar.gz > checksums.txt
+
+      - name: Write the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          notes="$(printf '%s\n' \
+            "The build of \`main\`, at commit \`${GITHUB_SHA}\`." \
+            "" \
+            "That address gives the newest build. Every push to \`main\` writes a release and moves it.")"
+          gh release create "$tag" --title "$tag" --notes "$notes" --latest --target "$GITHUB_SHA" \
+            dist/*
+
+      - name: Delete each release after the tenth
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          gh release list --limit 100 --json tagName,createdAt \
+            | jq -r 'sort_by(.createdAt) | reverse | .[].tagName | select(startswith("edge-"))' \
+            | tail -n +11 \
+            | while read -r old; do gh release delete "$old" --yes --cleanup-tag; done

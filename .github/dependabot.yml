@@ -1,0 +1,24 @@
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: "/"
+    target-branch: "main"
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 5
+    open-pull-requests-limit: 10
+    groups:
+      patch-and-minor:
+        update-types: [patch, minor]
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    target-branch: "main"
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 5
+    groups:
+      github-actions:
+        patterns: ["*"]
